@@ -1,11 +1,138 @@
-<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Visor de Salud Escolar</title><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"><link rel="stylesheet" href="style.css"></head><body>
-<header class="topbar"><div><span class="eyebrow">Sistema de información geográfica</span><h1>Visor de Salud Escolar</h1><p>Consulta territorial de indicadores de salud, prioridad de atención y alertas múltiples.</p></div><a href="estadisticas.html">Estadísticas generales</a></header>
-<main class="layout"><aside class="sidebar" id="sidebar"><div class="sidebar-head"><div><span class="eyebrow">Herramientas</span><strong>Panel de consulta</strong></div><button id="hideMenu" aria-label="Ocultar panel">‹</button></div>
-<section class="panel intro-panel"><strong>Cómo usar el visor</strong><p>Filtra los registros, elige un indicador y selecciona una escuela en el mapa para consultar su ficha.</p></section>
-<section class="panel"><h2>1. Buscar escuela</h2><label>CCT</label><input id="searchCct" list="cctList" placeholder="Escribe o selecciona CCT"><datalist id="cctList"></datalist><label>Nombre</label><input id="searchName" list="nameList" placeholder="Nombre de la escuela"><datalist id="nameList"></datalist></section>
-<section class="panel"><h2>2. Filtrar información</h2><label>Alcaldía</label><select id="filterAlcaldia"><option value="">Todas</option></select><label>Referencia de ciclo escolar</label><select id="filterCycle"><option value="">Todos</option></select><label>Prioridad de atención</label><select id="filterPriority"><option value="">Todas</option><option>Bajo</option><option>Medio</option><option>Alto</option><option>Muy alto</option></select><label>Alertas múltiples</label><select id="filterAlerts"><option value="">Todas</option><option>Bajo</option><option>Medio</option><option>Alto</option><option>Muy alto</option></select><div id="activeFilters" class="active-filters" aria-live="polite"></div><div class="buttons"><button id="clearFilters" class="secondary">Restablecer filtros</button></div></section>
-<section class="panel"><h2>3. Elegir indicador del mapa</h2><label>Grupo de consulta</label><select id="queryGroup"><option value="health">Problemas de salud</option><option value="priority">Prioridad de atención</option><option value="alerts">Alertas múltiples</option></select><div id="healthWrap"><label>Indicador de salud</label><select id="healthMetric"><option value="pct_sobrepeso_obesidad">Sobrepeso u obesidad</option><option value="pct_caries">Caries</option><option value="pct_visual">Problemas visuales</option><option value="imc_promedio">IMC promedio</option><option value="completitud">Completitud</option></select></div><div class="indicator-note"><span>Indicador activo</span><strong id="activeMetricName">Sobrepeso u obesidad</strong><small>La simbología, estadísticas y ficha seleccionada se actualizan automáticamente.</small></div></section>
-<section class="panel compact"><h2>Resumen de resultados visibles</h2><div class="kpis"><div><strong id="kSchools">0</strong><span>Registros visibles</span></div><div><strong id="kEnrollment">0</strong><span>Matrícula total</span></div><div><strong id="kImc">—</strong><span>IMC promedio</span></div><div><strong id="kMetric">—</strong><span id="kMetricLabel">Indicador</span></div></div></section>
-<section class="panel"><div class="panel-title-row"><h2>Resumen por alcaldía</h2><button id="toggleBoroughSummary" class="icon-btn" aria-label="Ocultar resumen">−</button></div><p class="section-help">Selecciona una alcaldía para filtrar y acercar el mapa.</p><div id="boroughSummary"></div></section>
-</aside><button id="showMenu" class="show-menu hidden">Menú</button><section class="maparea"><div id="map"></div><div class="legend" id="legend"><div class="legend-head"><div><small class="legend-kicker">Simbología del mapa</small><strong id="legendTitle">Clasificación por sobrepeso u obesidad</strong></div><button id="toggleLegend" aria-label="Ocultar leyenda">−</button></div><div id="legendBody"></div></div><aside id="detail" class="detail"><button id="closeDetail" aria-label="Cerrar ficha">×</button><div class="detail-kicker">Ficha de salud escolar</div><h2 id="detailTitle">Seleccione una escuela</h2><div id="detailBody"><p>Haga clic en un punto del mapa.</p></div></aside></section></main>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><script src="script.js"></script></body></html>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Visor territorial de indicadores de salud escolar de la Ciudad de México.">
+  <title>Visor de Salud Escolar | CDMX</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-icon" aria-hidden="true"><i class="fa-solid fa-heart-pulse"></i></div>
+      <div class="brand-text">
+        <h1>Visor de Salud Escolar</h1>
+        <p>Sistema de consulta territorial de la Ciudad de México</p>
+      </div>
+    </div>
+
+    <div class="topbar-actions">
+      <div class="search-box">
+        <label class="sr-only" for="searchInput">Buscar escuela por nombre, CCT o alcaldía</label>
+        <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+        <input id="searchInput" type="search" placeholder="Buscar escuela, CCT o alcaldía..." autocomplete="off" spellcheck="false">
+        <div id="searchResults" class="search-results" role="listbox" aria-label="Resultados de búsqueda"></div>
+      </div>
+      <a class="topbar-button" href="estadisticas.html"><i class="fa-solid fa-chart-column" aria-hidden="true"></i><span>Estadísticas</span></a>
+      <button id="fullscreenBtn" class="topbar-button" type="button" title="Pantalla completa" aria-label="Activar pantalla completa">
+        <i class="fa-solid fa-expand" aria-hidden="true"></i><span>Pantalla completa</span>
+      </button>
+    </div>
+  </header>
+
+  <main id="appLayout" class="app-layout details-closed">
+    <aside id="filtersPanel" class="left-panel" aria-label="Filtros y resumen">
+      <div class="panel-heading">
+        <div><span class="panel-kicker">Consulta institucional</span><h2>Filtros del visor</h2></div>
+        <button id="clearFilters" class="secondary-button compact-button" type="button"><i class="fa-solid fa-rotate-left" aria-hidden="true"></i> Limpiar</button>
+      </div>
+
+      <section class="panel-section">
+        <div class="section-title"><i class="fa-solid fa-map-location-dot" aria-hidden="true"></i><h3>Indicador del mapa</h3></div>
+        <div class="form-group">
+          <label for="metricSelect">Representar en el mapa</label>
+          <select id="metricSelect">
+            <optgroup label="Problemas de salud">
+              <option value="pct_sobrepeso_obesidad">Sobrepeso u obesidad</option>
+              <option value="pct_caries">Caries</option>
+              <option value="pct_visual">Problemas visuales</option>
+              <option value="imc_promedio">IMC promedio</option>
+            </optgroup>
+            <optgroup label="Seguimiento y atención">
+              <option value="prioridad_atencion">Prioridad de atención</option>
+              <option value="pct_alertas_multiples">Alertas múltiples</option>
+              <option value="completitud">Completitud de registros</option>
+            </optgroup>
+          </select>
+        </div>
+        <div id="miniMetricLegend" class="mini-variable-legend" aria-live="polite">
+          <div id="miniLegendTitle" class="mini-legend-heading">Sobrepeso u obesidad</div>
+          <div id="miniLegendBar" class="mini-color-bar" aria-hidden="true"></div>
+          <div id="miniLegendLabels" class="mini-color-labels"><span>Menor</span><span>Mayor</span></div>
+        </div>
+      </section>
+
+      <section class="panel-section">
+        <div class="section-title"><i class="fa-solid fa-filter" aria-hidden="true"></i><h3>Filtros</h3></div>
+        <div class="form-group"><label for="filterAlcaldia">Alcaldía</label><select id="filterAlcaldia"><option value="">Todas las alcaldías</option></select></div>
+        <div class="form-group"><label for="filterLevel">Nivel educativo</label><select id="filterLevel"><option value="">Todos los niveles</option></select></div>
+        <div class="form-group"><label for="filterCycle">Referencia de ciclo escolar</label><select id="filterCycle"><option value="">Todos los ciclos</option></select></div>
+        <div class="form-group"><label for="filterPriority">Prioridad de atención</label><select id="filterPriority"><option value="">Todas las categorías</option><option value="Bajo">Baja</option><option value="Medio">Media</option><option value="Alto">Alta</option><option value="Muy alto">Muy alta</option></select></div>
+        <div class="form-group"><label for="filterAlerts">Alertas múltiples</label><select id="filterAlerts"><option value="">Todas las categorías</option><option value="Bajo">Bajas</option><option value="Medio">Medias</option><option value="Alto">Altas</option><option value="Muy alto">Muy altas</option></select></div>
+        <div id="activeFilters" class="active-filters" aria-live="polite"></div>
+      </section>
+
+      <section class="panel-section collapsible-section" id="layersSection">
+        <button class="section-title section-toggle" id="layersToggle" type="button" aria-expanded="true" aria-controls="layersContent">
+          <span class="section-title-label"><i class="fa-solid fa-layer-group" aria-hidden="true"></i><h3>Capas del mapa</h3></span>
+          <i class="fa-solid fa-chevron-up section-toggle-icon" aria-hidden="true"></i>
+        </button>
+        <div id="layersContent" class="layer-list collapsible-content">
+          <label class="layer-option"><input id="chkSchools" type="checkbox" checked><span class="layer-option-text"><strong>Escuelas</strong><small>Registros del indicador seleccionado</small></span></label>
+          <label class="layer-option"><input id="chkAlcaldias" type="checkbox" checked><span class="layer-option-text"><strong>Alcaldías</strong><small>Límites territoriales</small></span></label>
+        </div>
+      </section>
+
+      <section class="panel-section">
+        <div class="section-title"><i class="fa-solid fa-chart-simple" aria-hidden="true"></i><h3>Resumen visible</h3></div>
+        <div class="stats-grid">
+          <article class="stat-card"><span class="stat-label">Registros</span><strong id="kSchools">—</strong></article>
+          <article class="stat-card"><span class="stat-label">Matrícula</span><strong id="kEnrollment">—</strong></article>
+          <article class="stat-card"><span class="stat-label">IMC promedio</span><strong id="kImc">—</strong></article>
+          <article class="stat-card"><span id="kMetricLabel" class="stat-label">Indicador</span><strong id="kMetric">—</strong></article>
+        </div>
+      </section>
+
+      <section class="panel-section collapsible-section is-collapsed" id="boroughSection">
+        <button class="section-title section-toggle" id="boroughToggle" type="button" aria-expanded="false" aria-controls="boroughSummary">
+          <span class="section-title-label"><i class="fa-solid fa-building" aria-hidden="true"></i><h3>Resumen por alcaldía</h3></span>
+          <i class="fa-solid fa-chevron-up section-toggle-icon" aria-hidden="true"></i>
+        </button>
+        <div id="boroughSummary" class="borough-summary collapsible-content"></div>
+      </section>
+    </aside>
+
+    <button id="openFilters" class="map-button open-filters" type="button" aria-label="Abrir filtros" title="Abrir filtros"><i class="fa-solid fa-sliders"></i></button>
+
+    <section class="map-area" aria-label="Mapa de salud escolar">
+      <div id="map"></div>
+      <div id="mapStatus" class="map-status"><i class="fa-solid fa-circle-info" aria-hidden="true"></i><span id="mapStatusText">Selecciona una escuela para consultar su ficha.</span></div>
+      <div id="legend" class="map-legend">
+        <div class="legend-header">
+          <div><span class="panel-kicker">Simbología</span><strong id="legendTitle">Sobrepeso u obesidad</strong></div>
+          <button id="legendToggle" class="plain-icon-button" type="button" aria-label="Ocultar leyenda"><i class="fa-solid fa-minus"></i></button>
+        </div>
+        <div id="legendBody" class="legend-body"></div>
+      </div>
+    </section>
+
+    <aside id="detailsPanel" class="details-panel closed" aria-label="Ficha de salud escolar">
+      <div class="details-header">
+        <div><span class="panel-kicker">Ficha de salud escolar</span><h2 id="detailsTitle">Información de la escuela</h2></div>
+        <button id="closeDetails" class="icon-button" type="button" aria-label="Cerrar ficha"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div id="detailsBody" class="details-scroll">
+        <div class="empty-state"><i class="fa-solid fa-school"></i><p>Selecciona una escuela en el mapa.</p></div>
+      </div>
+    </aside>
+  </main>
+
+  <footer class="footer"><span>Visor de Salud Escolar · Ciudad de México</span><span id="footerCount">Cargando información…</span></footer>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>

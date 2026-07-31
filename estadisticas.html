@@ -1,1 +1,56 @@
-<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Estadísticas de Salud Escolar</title><link rel="stylesheet" href="style.css"><style>body{padding:0}.stats{max-width:1200px;margin:24px auto;padding:0 18px}.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.card,.tablebox{background:#fff;border:1px solid #d6e0e6;border-radius:9px;padding:16px}.card strong{font-size:28px;color:#15324a;display:block}table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:9px;border-bottom:1px solid #e1e8ec;font-size:13px}@media(max-width:800px){.cards{grid-template-columns:1fr 1fr}}</style></head><body><header class="topbar"><div><span class="eyebrow">Resumen institucional</span><h1>Estadísticas de Salud Escolar</h1><p>Indicadores generales de la base integrada.</p></div><a href="index.html">Volver al mapa</a></header><main class="stats"><div class="cards"><div class="card"><strong id="sSchools">0</strong>Registros</div><div class="card"><strong id="sEnrollment">0</strong>Matrícula total</div><div class="card"><strong id="sImc">—</strong>IMC promedio</div><div class="card"><strong id="sPriority">—</strong>Prioridad promedio</div></div><h2>Top 10 por prioridad de atención</h2><div class="tablebox"><table><thead><tr><th>Escuela</th><th>CCT</th><th>Ciclo</th><th>Prioridad</th><th>Alertas</th></tr></thead><tbody id="topBody"></tbody></table></div></main><script>const n=v=>v==null?'—':(+v).toLocaleString('es-MX',{maximumFractionDigits:2});fetch('data/salud_escolar.json').then(r=>r.json()).then(d=>{sSchools.textContent=d.length.toLocaleString('es-MX');sEnrollment.textContent=d.reduce((a,r)=>a+(+r.matricula||0),0).toLocaleString('es-MX');let avg=c=>{let x=d.map(r=>+r[c]).filter(Number.isFinite);return x.reduce((a,b)=>a+b,0)/x.length};sImc.textContent=n(avg('imc_promedio'));sPriority.textContent=n(avg('prioridad_atencion'));topBody.innerHTML=[...d].sort((a,b)=>(+b.prioridad_atencion||0)-(+a.prioridad_atencion||0)).slice(0,10).map(r=>`<tr><td>${r.NOM_ESCUELA_ATENCION}</td><td>${r.CVE_ESCUELA_ATENCION}</td><td>${r.REF_CICLO_ESCOLAR}</td><td>${n(r.prioridad_atencion)}</td><td>${n(r.alertas_promedio)}</td></tr>`).join('')})</script></body></html>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Resumen estadístico del Visor de Salud Escolar.">
+  <title>Estadísticas | Visor de Salud Escolar</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="stats-page">
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-icon" aria-hidden="true"><i class="fa-solid fa-chart-column"></i></div>
+      <div class="brand-text"><h1>Estadísticas de Salud Escolar</h1><p>Resumen general de los registros integrados</p></div>
+    </div>
+    <div class="topbar-actions"><a class="topbar-button" href="index.html"><i class="fa-solid fa-map"></i><span>Volver al mapa</span></a></div>
+  </header>
+  <main class="stats-main">
+    <section class="summary-cards" aria-label="Indicadores generales">
+      <article class="summary-card"><span>Registros</span><strong id="sSchools">—</strong><small>Escuelas y turnos integrados</small></article>
+      <article class="summary-card"><span>Matrícula total</span><strong id="sEnrollment">—</strong><small>Población escolar registrada</small></article>
+      <article class="summary-card"><span>IMC promedio</span><strong id="sImc">—</strong><small id="sImcCount">Registros disponibles</small></article>
+      <article class="summary-card"><span>Prioridad promedio</span><strong id="sPriority">—</strong><small>Promedio general</small></article>
+    </section>
+
+    <section class="stats-panel">
+      <div class="stats-panel-heading"><div><span class="panel-kicker">Comparación territorial</span><h2>Resumen por alcaldía</h2></div></div>
+      <div class="table-wrapper"><table><thead><tr><th>Alcaldía</th><th>Registros</th><th>Matrícula</th><th>Sobrepeso u obesidad</th><th>Caries</th><th>Problemas visuales</th><th>Alertas múltiples</th><th>Prioridad</th></tr></thead><tbody id="boroughTable"></tbody></table></div>
+    </section>
+
+    <section class="stats-panel">
+      <div class="stats-panel-heading"><div><span class="panel-kicker">Atención</span><h2>Registros con mayor prioridad de atención</h2></div></div>
+      <div class="table-wrapper"><table><thead><tr><th>Escuela</th><th>CCT</th><th>Alcaldía</th><th>Ciclo</th><th>Prioridad</th><th>Alertas múltiples</th></tr></thead><tbody id="topTable"></tbody></table></div>
+    </section>
+  </main>
+  <script>
+    const number = (value, decimals = 1) => Number.isFinite(Number(value)) ? Number(value).toLocaleString('es-MX', { maximumFractionDigits: decimals }) : '—';
+    const enrollment = row => Number(row.NUM_MATRICULA_TOTAL_ESCUELA) || Number(row.NUM_MATRICULA_TOTAL_ESCUELA_y) || Number(row.NUM_MATRICULA_TOTAL_ESCUELA_x) || 0;
+    const average = (rows, field) => { const values = rows.map(row => Number(row[field])).filter(Number.isFinite); return values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : null; };
+    const safe = value => String(value ?? '').replace(/[&<>'\"]/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','\"':'&quot;'}[char]));
+    fetch('data/salud_escolar.json').then(response => response.json()).then(data => {
+      const imcRows = data.filter(row => Number.isFinite(Number(row.imc_promedio)));
+      sSchools.textContent = data.length.toLocaleString('es-MX');
+      sEnrollment.textContent = data.reduce((sum, row) => sum + enrollment(row), 0).toLocaleString('es-MX');
+      sImc.textContent = number(average(imcRows, 'imc_promedio'), 2);
+      sImcCount.textContent = `${imcRows.length.toLocaleString('es-MX')} registros disponibles`;
+      sPriority.textContent = number(average(data, 'prioridad_atencion'), 2);
+      const groups = new Map();
+      data.forEach(row => { if (!groups.has(row.alcaldia)) groups.set(row.alcaldia, []); groups.get(row.alcaldia).push(row); });
+      boroughTable.innerHTML = [...groups.entries()].sort(([a],[b]) => a.localeCompare(b, 'es')).map(([name, rows]) => `<tr><td><strong>${safe(name)}</strong></td><td>${rows.length.toLocaleString('es-MX')}</td><td>${rows.reduce((sum,row)=>sum+enrollment(row),0).toLocaleString('es-MX')}</td><td>${number(average(rows,'pct_sobrepeso_obesidad'))}%</td><td>${number(average(rows,'pct_caries'))}%</td><td>${number(average(rows,'pct_visual'))}%</td><td>${number(average(rows,'pct_alertas_multiples'))}%</td><td>${number(average(rows,'prioridad_atencion'),2)}</td></tr>`).join('');
+      topTable.innerHTML = [...data].sort((a,b) => Number(b.prioridad_atencion)-Number(a.prioridad_atencion)).slice(0,15).map(row => `<tr><td><strong>${safe(row.NOM_ESCUELA_ATENCION)}</strong></td><td>${safe(row.CVE_ESCUELA_ATENCION)}</td><td>${safe(row.alcaldia)}</td><td>${safe(row.REF_CICLO_ESCOLAR)}</td><td>${number(row.prioridad_atencion,2)}</td><td>${number(row.pct_alertas_multiples,2)}%</td></tr>`).join('');
+    }).catch(() => { document.querySelector('.stats-main').innerHTML = '<div class="stats-error">No fue posible cargar la información estadística.</div>'; });
+  </script>
+</body>
+</html>
